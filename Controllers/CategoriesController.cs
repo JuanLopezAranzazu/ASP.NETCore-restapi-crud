@@ -21,6 +21,12 @@ public class CategoriesController : ControllerBase
         return Ok(await _service.GetAllAsync());
     }
 
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        return Ok(await _service.GetByIdAsync(id));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(CreateCategoryDto dto)
     {
@@ -28,28 +34,18 @@ public class CategoriesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        var category = await _service.GetByIdAsync(id);
-        if (category == null) return NotFound();
-        return Ok(category);
-    }
-
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, UpdateCategoryDto dto)
     {
-        var category = await _service.UpdateAsync(id, dto);
-        if (category == null) return NotFound();
-        return Ok(category);
+        return Ok(await _service.UpdateAsync(id, dto));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _service.DeleteAsync(id);
-        if (!deleted) return NotFound();
+        await _service.DeleteAsync(id);
         return NoContent();
     }
+
 
 }

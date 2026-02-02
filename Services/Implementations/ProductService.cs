@@ -31,6 +31,22 @@ public class ProductService : IProductService
 
     public async Task<ProductDto> CreateAsync(CreateProductDto dto)
     {
+        // Validar que la categoría exista
+        var categoryExists = await _context.Categories
+            .AnyAsync(c => c.Id == dto.CategoryId);
+
+        if (!categoryExists)
+            throw new BadRequestException("La categoría no existe.");
+
+        // Validar que no exista un producto con el mismo nombre en la misma categoría
+        var exists = await _context.Products
+            .AnyAsync(p =>
+                p.Name.ToLower() == dto.Name.ToLower() &&
+                p.CategoryId == dto.CategoryId);
+
+        if (exists)
+            throw new ConflictException("El producto ya existe en esa categoría.");
+
         var product = new Product
         {
             Name = dto.Name,
@@ -41,21 +57,13 @@ public class ProductService : IProductService
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
 
-        return new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price,
-            CategoryName = (await _context.Categories
-                .Where(c => c.Id == product.CategoryId)
-                .Select(c => c.Name)
-                .FirstAsync())
-        };
+        return await GetByIdAsync(product.Id);
     }
 
-    public async Task<ProductDto?> GetByIdAsync(int id)
+    public async Task<ProductDto> GetByIdAsync(int id)
     {
-        return await _context.Products
+        // Buscar el producto por ID e incluir la categoría
+        var product = await _context.Products
             .Include(p => p.Category)
             .Where(p => p.Id == id)
             .Select(p => new ProductDto
@@ -66,15 +74,37 @@ public class ProductService : IProductService
                 CategoryName = p.Category.Name
             })
             .FirstOrDefaultAsync();
+
+        if (product == null)
+            throw new NotFoundException("Producto no encontrado.");
+
+        return product;
     }
 
-    public async Task<ProductDto?> UpdateAsync(int id, UpdateProductDto dto)
-    {
-        var product = await _context.Products
-            .Include(p => p.Category)
-            .FirstOrDefaultAsync(p => p.Id == id);
+    public async Task<ProductDto> UpdateAsync(int id, UpdateProductDto dto)
+    {   
+        // Buscar el producto por ID
+        var product = await _context.Products.FindAsync(id);
 
-        if (product == null) return null;
+        if (product == null)
+            throw new NotFoundException("Producto no encontrado.");
+
+        // Validar que la categoría exista
+        var categoryExists = await _context.Categories
+            .AnyAsync(c => c.Id == dto.CategoryId);
+
+        if (!categoryExists)
+            throw new BadRequestException("La categoría no existe.");
+
+        // Validar que no exista otro producto con el mismo nombre en la misma categoría
+        var exists = await _context.Products
+            .AnyAsync(p =>
+                p.Id != id &&
+                p.Name.ToLower() == dto.Name.ToLower() &&
+                p.CategoryId == dto.CategoryId);
+
+        if (exists)
+            throw new ConflictException("Ya existe otro producto con ese nombre en la categoría.");
 
         product.Name = dto.Name;
         product.Price = dto.Price;
@@ -82,23 +112,19 @@ public class ProductService : IProductService
 
         await _context.SaveChangesAsync();
 
-        return new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price,
-            CategoryName = product.Category.Name
-        };
+        return await GetByIdAsync(id);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
+        // Buscar el producto por ID
         var product = await _context.Products.FindAsync(id);
-        if (product == null) return false;
+
+        if (product == null)
+            throw new NotFoundException("Producto no encontrado.");
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
-        return true;
     }
 
 }

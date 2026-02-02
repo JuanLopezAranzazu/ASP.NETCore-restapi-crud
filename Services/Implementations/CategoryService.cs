@@ -28,6 +28,15 @@ public class CategoryService : ICategoryService
 
     public async Task<CategoryDto> CreateAsync(CreateCategoryDto dto)
     {
+        // Verificar si la categoría ya existe
+        var exists = await _context.Categories
+            .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower());
+
+        if (exists)
+        {
+            throw new ConflictException("La categoría ya existe.");
+        }
+
         var category = new Category
         {
             Name = dto.Name
@@ -43,9 +52,10 @@ public class CategoryService : ICategoryService
         };
     }
 
-    public async Task<CategoryDto?> GetByIdAsync(int id)
+    public async Task<CategoryDto> GetByIdAsync(int id)
     {
-        return await _context.Categories
+        // Buscar la categoría por ID
+        var category = await _context.Categories
             .Where(c => c.Id == id)
             .Select(c => new CategoryDto
             {
@@ -53,12 +63,28 @@ public class CategoryService : ICategoryService
                 Name = c.Name
             })
             .FirstOrDefaultAsync();
+
+        if (category == null)
+            throw new NotFoundException("Categoría no encontrada.");
+
+        return category;
     }
 
-    public async Task<CategoryDto?> UpdateAsync(int id, UpdateCategoryDto dto)
+
+    public async Task<CategoryDto> UpdateAsync(int id, UpdateCategoryDto dto)
     {
+        // Buscar la categoría por ID
         var category = await _context.Categories.FindAsync(id);
-        if (category == null) return null;
+
+        if (category == null)
+            throw new NotFoundException("Categoría no encontrada.");
+
+        // Verificar si otra categoría con el mismo nombre ya existe
+        var exists = await _context.Categories
+            .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower() && c.Id != id);
+
+        if (exists)
+            throw new ConflictException("Ya existe otra categoría con ese nombre.");
 
         category.Name = dto.Name;
         await _context.SaveChangesAsync();
@@ -70,14 +96,16 @@ public class CategoryService : ICategoryService
         };
     }
 
-    public async Task<bool> DeleteAsync(int id)
-    {
+    public async Task DeleteAsync(int id)
+    {   
+        // Buscar la categoría por ID
         var category = await _context.Categories.FindAsync(id);
-        if (category == null) return false;
+
+        if (category == null)
+            throw new NotFoundException("Categoría no encontrada.");
 
         _context.Categories.Remove(category);
         await _context.SaveChangesAsync();
-        return true;
     }
 
 }
