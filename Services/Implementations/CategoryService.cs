@@ -26,10 +26,58 @@ public class CategoryService : ICategoryService
             .ToListAsync();
     }
 
-    public async Task CreateAsync(CreateCategoryDto dto)
+    public async Task<CategoryDto> CreateAsync(CreateCategoryDto dto)
     {
-        var category = new Category { Name = dto.Name };
+        var category = new Category
+        {
+            Name = dto.Name
+        };
+
         _context.Categories.Add(category);
         await _context.SaveChangesAsync();
+
+        return new CategoryDto
+        {
+            Id = category.Id,
+            Name = category.Name
+        };
     }
+
+    public async Task<CategoryDto?> GetByIdAsync(int id)
+    {
+        return await _context.Categories
+            .Where(c => c.Id == id)
+            .Select(c => new CategoryDto
+            {
+                Id = c.Id,
+                Name = c.Name
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<CategoryDto?> UpdateAsync(int id, UpdateCategoryDto dto)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null) return null;
+
+        category.Name = dto.Name;
+        await _context.SaveChangesAsync();
+
+        return new CategoryDto
+        {
+            Id = category.Id,
+            Name = category.Name
+        };
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null) return false;
+
+        _context.Categories.Remove(category);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
 }
