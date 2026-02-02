@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ProductApi.Models;
 
 namespace ProductApi.Data;
 
@@ -8,4 +9,7 @@ public class AppDbContext : DbContext
         : base(options)
     {
     }
+
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Category> Categories => Set<Category>();
 }
